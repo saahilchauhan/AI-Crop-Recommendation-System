@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+//import { MapPin, FileText, Info, Leaf, AlertCircle, CheckCircle, Loader } from 'lucide-react';
 import { MapPin, FileText, Info, Leaf, AlertCircle, CheckCircle, Loader } from 'lucide-react';
 
 // Simplified crop database
@@ -7,12 +8,27 @@ const CROPS = {
   wheat: { name: 'गेहूं (Wheat)', icon: '🌾', season: 'रबी', yield: '25-30 क्विंटल/एकड़' },
   maize: { name: 'मक्का (Maize)', icon: '🌽', season: 'खरीफ/रबी', yield: '20-30 क्विंटल/एकड़' },
   cotton: { name: 'कपास (Cotton)', icon: '🌱', season: 'खरीफ', yield: '15-20 क्विंटल/एकड़' },
-  sugarcane: { name: 'गन्ना (Sugarcane)', icon: '🎋', season: 'साल भर', yield: '300-400 क्विंटल/एकड़' },
   chickpea: { name: 'चना (Chickpea)', icon: '🫘', season: 'रबी', yield: '8-12 क्विंटल/एकड़' },
+  kidneybeans: { name: 'राजमा (Kidney Beans)', icon: '🫘', season: 'रबी', yield: '10-15 क्विंटल/एकड़' },
   pigeonpeas: { name: 'अरहर (Arhar)', icon: '🫘', season: 'खरीफ', yield: '8-10 क्विंटल/एकड़' },
-  soybean: { name: 'सोयाबीन (Soybean)', icon: '🫘', season: 'खरीफ', yield: '10-15 क्विंटल/एकड़' },
-  potato: { name: 'आलू (Potato)', icon: '🥔', season: 'रबी', yield: '150-200 क्विंटल/एकड़' },
-  tomato: { name: 'टमाटर (Tomato)', icon: '🍅', season: 'रबी', yield: '200-300 क्विंटल/एकड़' },
+  mothbeans: { name: 'मोठ (Moth Beans)', icon: '🫘', season: 'खरीफ', yield: '5-8 क्विंटल/एकड़' },
+  mungbean: { name: 'मूंग (Mung Bean)', icon: '🫘', season: 'खरीफ', yield: '8-12 क्विंटल/एकड़' },
+  blackgram: { name: 'उड़द (Black Gram)', icon: '🫘', season: 'खरीफ/रबी', yield: '8-10 क्विंटल/एकड़' },
+  lentil: { name: 'मसूर (Lentil)', icon: '🫘', season: 'रबी', yield: '8-12 क्विंटल/एकड़' },
+  pomegranate: { name: 'अनार (Pomegranate)', icon: '🍎', season: 'साल भर', yield: '100-150 क्विंटल/एकड़' },
+  
+  // ADD THESE MISSING ONES:
+  banana: { name: 'केला (Banana)', icon: '🍌', season: 'साल भर', yield: '300-400 क्विंटल/एकड़' },
+  mango: { name: 'आम (Mango)', icon: '🥭', season: 'गर्मी', yield: '100-150 क्विंटल/एकड़' },
+  grapes: { name: 'अंगूर (Grapes)', icon: '🍇', season: 'साल भर', yield: '150-200 क्विंटल/एकड़' },
+  watermelon: { name: 'तरबूज (Watermelon)', icon: '🍉', season: 'गर्मी', yield: '200-300 क्विंटल/एकड़' },
+  muskmelon: { name: 'खरबूजा (Muskmelon)', icon: '🍈', season: 'गर्मी', yield: '150-200 क्विंटल/एकड़' },
+  apple: { name: 'सेब (Apple)', icon: '🍎', season: 'सर्दी', yield: '80-120 क्विंटल/एकड़' },
+  orange: { name: 'संतरा (Orange)', icon: '🍊', season: 'सर्दी', yield: '150-200 क्विंटल/एकड़' },
+  papaya: { name: 'पपीता (Papaya)', icon: '🫐', season: 'साल भर', yield: '400-600 क्विंटल/एकड़' },
+  coconut: { name: 'नारियल (Coconut)', icon: '🥥', season: 'साल भर', yield: '80-100 फल/पेड़/साल' },
+  jute: { name: 'जूट (Jute)', icon: '🌿', season: 'खरीफ', yield: '20-30 क्विंटल/एकड़' },
+  coffee: { name: 'कॉफ़ी (Coffee)', icon: '☕', season: 'साल भर', yield: '8-12 क्विंटल/एकड़' }
 };
 
 const FarmerFriendlyCropApp = () => {
@@ -27,6 +43,7 @@ const FarmerFriendlyCropApp = () => {
     pH: ''
   });
   const [recommendations, setRecommendations] = useState(null);
+  const [loadingRecommendations, setLoadingRecommendations] = useState(false);
   const [language, setLanguage] = useState('hi'); // 'hi' for Hindi, 'en' for English
 
   const text = {
@@ -174,8 +191,101 @@ const FarmerFriendlyCropApp = () => {
     });
   };
 
-  // Simple recommendation logic
-  const getRecommendations = () => {
+  const getRecommendations = async () => {
+  setLoadingRecommendations(true);
+  
+  try {
+    const response = await fetch('https://crop-backend-api-5ynn.onrender.com/predict', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        N: parseFloat(soilData.N) || 80,
+        P: parseFloat(soilData.P) || 50,
+        K: parseFloat(soilData.K) || 50,
+        temperature: weather?.temperature || 25,
+        humidity: weather?.humidity || 70,
+        ph: parseFloat(soilData.pH) || 6.5,
+        rainfall: weather?.rainfall || 0
+      })
+    });
+
+    const data = await response.json();
+    
+    console.log('API Response:', data);
+    
+    if (data.success && data.top_5_crops) {
+      // Map ML model crop names to our CROPS object
+      const cropMapping = {
+        'rice': 'rice',
+        'wheat': 'wheat',
+        'maize': 'maize',
+        'chickpea': 'chickpea',
+        'kidneybeans': 'kidneybeans',
+        'pigeonpeas': 'pigeonpeas',
+        'mothbeans': 'mothbeans',
+        'mungbean': 'mungbean',
+        'blackgram': 'blackgram',
+        'lentil': 'lentil',
+        'pomegranate': 'pomegranate',
+        'banana': 'banana',
+        'mango': 'mango',
+        'grapes': 'grapes',
+        'watermelon': 'watermelon',
+        'muskmelon': 'muskmelon',
+        'apple': 'apple',
+        'orange': 'orange',
+        'papaya': 'papaya',
+        'coconut': 'coconut',
+        'cotton': 'cotton',
+        'jute': 'jute',
+        'coffee': 'coffee'
+      };
+      
+      const transformed = data.top_5_crops.slice(0, 5).map((crop, idx) => {
+        const mappedCrop = cropMapping[crop.toLowerCase()] || crop.toLowerCase();
+        const cropData = CROPS[mappedCrop];
+        
+        // Fallback if crop not found in CROPS
+        if (!cropData) {
+          console.warn(`Crop not found in database: ${crop}`);
+          return {
+            crop: crop,
+            score: Math.round(data.top_5_probabilities[idx] * 100),
+            data: {
+              name: crop.charAt(0).toUpperCase() + crop.slice(1),
+              icon: '🌾',
+              season: 'Based on your conditions',
+              yield: 'Varies by region'
+            }
+          };
+        }
+        
+        return {
+          crop: mappedCrop,
+          score: Math.round(data.top_5_probabilities[idx] * 100),
+          data: cropData
+        };
+      });
+      
+      console.log('Transformed recommendations:', transformed);
+      
+      setRecommendations(transformed);
+      setStep(3);
+    } else {
+      alert('Error getting recommendations. Please try again.');
+      console.error('API returned error:', data);
+    }
+  } catch (error) {
+    console.error('Error calling ML API:', error);
+    alert('Unable to connect to ML service. Please check your connection.');
+  } finally {
+    setLoadingRecommendations(false);
+  }
+};
+
+/*   const getRecommendations = () => {
     const N = parseFloat(soilData.N) || 80;
     const P = parseFloat(soilData.P) || 50;
     const K = parseFloat(soilData.K) || 50;
@@ -252,7 +362,7 @@ const FarmerFriendlyCropApp = () => {
     
     setRecommendations(scores.slice(0, 5));
     setStep(3);
-  };
+  }; */
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-green-50 to-blue-50">
@@ -452,9 +562,17 @@ const FarmerFriendlyCropApp = () => {
 
             <button
               onClick={getRecommendations}
-              className="w-full mt-8 bg-green-600 hover:bg-green-700 text-white font-bold py-6 px-6 rounded-xl text-xl shadow-lg transform hover:scale-105 transition"
+              disabled={loadingRecommendations}
+              className="w-full mt-8 bg-green-600 hover:bg-green-700 text-white font-bold py-6 px-6 rounded-xl text-xl shadow-lg transform hover:scale-105 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
-              {t.getRecommendation}
+              {loadingRecommendations ? (
+                <>
+                  <Loader className="w-6 h-6 animate-spin" />
+                  {t.loading}
+                </>
+              ) : (
+                t.getRecommendation
+              )}
             </button>
 
             <button
